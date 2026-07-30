@@ -1,0 +1,24 @@
+; Engine configuration file.
+; Godot 4.6 compatible project scaffold for Troll's Time Bridge.
+
+config_version=5
+
+[application]
+config/name="Troll's Time Bridge"
+run/main_scene="res://scenes/game/GameRoot.tscn"
+config/features=PackedStringArray("4.6")
+config/icon="res://icon.svg"
+
+[autoload]
+EventBus="*res://autoload/event_bus.gd"
+GameState="*res://scripts/core/game_state.gd"
+
+[display]
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"

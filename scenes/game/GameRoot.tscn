@@ -1,0 +1,16 @@
+[gd_scene load_steps=4 format=3 uid="uid://ttb_game_root"]
+
+[ext_resource type="Script" path="res://scripts/core/game_controller.gd" id="1_controller"]
+[ext_resource type="PackedScene" path="res://scenes/entities/TrollPlayer.tscn" id="2_player"]
+[ext_resource type="PackedScene" path="res://scenes/ui/Hud.tscn" id="3_hud"]
+
+[node name="GameRoot" type="Node2D"]
+script = ExtResource("1_controller")
+
+[node name="MazeRoot" type="Node2D" parent="."]
+unique_name_in_owner = true
+
+[node name="TrollPlayer" parent="." instance=ExtResource("2_player")]
+unique_name_in_owner = true
+
+[node name="Hud" parent="." instance=ExtResource("3_hud")]
