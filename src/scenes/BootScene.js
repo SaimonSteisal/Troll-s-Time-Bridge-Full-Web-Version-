@@ -21,7 +21,7 @@ export default class BootScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     this.add
-      .text(this.scale.width / 2, this.scale.height / 2 + 20, 'Scaffold OK - booting test scene...', {
+      .text(this.scale.width / 2, this.scale.height / 2 + 20, 'Generating dungeon...', {
         fontFamily: 'monospace',
         fontSize: '18px',
         color: '#8f8aa3',
@@ -31,7 +31,8 @@ export default class BootScene extends Phaser.Scene {
     // tiny fade-in so the handover to the next scene reads as intentional
     this.tweens.add({ targets: [label], alpha: { from: 0, to: 1 }, duration: 300 });
 
-    this.time.delayedCall(600, () => this.scene.start('ScaffoldTest'));
+    // STEP 5: boot straight into the procedural dungeon (was 'ScaffoldTest').
+    this.time.delayedCall(600, () => this.scene.start('DungeonScene'));
   }
 
   /** Coloured geometric placeholders. TODO: Replace with sprite sheets. */

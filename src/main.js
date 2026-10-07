@@ -12,10 +12,14 @@ globalThis.Phaser = Phaser;
 import { GAME_CONFIG } from './config/gameConfig.js';
 import BootScene from './scenes/BootScene.js';
 import ScaffoldTestScene from './scenes/ScaffoldTestScene.js';
+import DungeonScene from './scenes/DungeonScene.js';
 
 const game = new Phaser.Game({
   ...GAME_CONFIG,
-  scene: [BootScene, ScaffoldTestScene],
+  // DungeonScene is the STEP 5 main scene (wires DungeonGenerator -> tilemap).
+  // ScaffoldTestScene stays registered for debugging via
+  // window.ashenfall.scene.getScene('DungeonScene').scene.start('ScaffoldTest')
+  scene: [BootScene, DungeonScene, ScaffoldTestScene],
 });
 
 // Handy for debugging in the console: window.ashenfall.scene.getScene('ScaffoldTest')
