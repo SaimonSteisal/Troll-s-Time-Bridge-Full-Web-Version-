@@ -1,0 +1,22 @@
+{
+  "name": "ashenfall",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Ashenfall - a cross-platform 2D Diablo-like action RPG built with Phaser 3 + Vite",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --host",
+    "start": "vite --host"
+  },
+  "dependencies": {
+    "phaser": "3.90.0"
+  },
+  "devDependencies": {
+    "vite": "5.4.11"
+  }
+}
