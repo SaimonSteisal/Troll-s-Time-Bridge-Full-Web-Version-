@@ -1,9 +1,11 @@
 // src/scenes/ScaffoldTestScene.js
-// STEP 1 verification scene. Proves: Vite dev server, Phaser WebGL boot, FIT scaling,
-// world bounds + camera follow, and that all four input devices are detected.
+// STEP 1 verification scene. Proves: Vite dev server, Phaser WebGL boot, adaptive
+// RESIZE scaling (portrait + landscape), world bounds + camera follow, virtual
+// touch controls, and that all four input devices are detected.
 // Real movement/combat arrives in STEP 4/5 via the InputManager abstraction.
 
 import { WORLD, COLORS } from '../config/constants.js';
+import TouchControls from '../input/TouchControls.js';
 
 export default class ScaffoldTestScene extends Phaser.Scene {
   constructor() {
@@ -21,13 +23,14 @@ export default class ScaffoldTestScene extends Phaser.Scene {
       }
     }
 
-    // ── Placeholder player body ───────────────────────────────────────
+    // ── Placeholder player body (96px texture, scaled up for mobile testing) ─
     this.player = this.physics.add
       .sprite(WORLD.width / 2, WORLD.height / 2, 'ph-player')
+      .setScale(1.5)
       .setDepth(10)
       .setCollideWorldBounds(true)
       .setDrag(1200);
-    this.player.body.setCircle(16);
+    this.player.body.setCircle(44, 8, 8); // matches the 96px centered texture
     this.add.image(this.player.x, this.player.y, 'ph-glow').setDepth(9).setAlpha(0.35);
 
     // ── Camera follows the body, letterboxed to the world ─────────────
@@ -51,6 +54,10 @@ export default class ScaffoldTestScene extends Phaser.Scene {
     // STEP 4 moves all of this behind InputManager -> abstract ACTIONS.
     this.keys = this.input.keyboard.addKeys('W,A,S,D,R,UP,LEFT,DOWN,RIGHT');
     this.input.on('pointerdown', () => this.pingInput());
+
+    // ── Virtual joystick + attack button (mobile) ─────────────────────
+    // Shown on touch devices; also handy for desktop pointer testing.
+    this.touch = new TouchControls(this);
 
     this.gamepadLabel = 'none';
     this.pingInput();
@@ -76,6 +83,14 @@ export default class ScaffoldTestScene extends Phaser.Scene {
     if (k.W.isDown || k.UP.isDown) vy -= 1;
     if (k.S.isDown || k.DOWN.isDown) vy += 1;
 
+    // Virtual joystick input (analogue, magnitude 0..1). Touch takes priority;
+    // keyboard is the fallback when no finger is on the stick.
+    this.touch.update();
+    if (this.touch.joyPointerId !== null) {
+      vx = this.touch.moveX;
+      vy = this.touch.moveY;
+    }
+
     if (vx || vy) {
       const len = Math.hypot(vx, vy);
       this.player.setVelocity((vx / len) * 260, (vy / len) * 260);
@@ -85,6 +100,9 @@ export default class ScaffoldTestScene extends Phaser.Scene {
     }
     void time;
     void delta;
+
+    // Attack button edge -> scaffold pulse (real combat arrives in STEP 5).
+    if (this.touch.attackJustPressed()) this.pingInput();
 
     if (Phaser.Input.Keyboard.JustDown(k.R)) this.scene.restart();
 
@@ -109,15 +127,21 @@ export default class ScaffoldTestScene extends Phaser.Scene {
     return [
       'ASHENFALL - STEP 1 SCAFFOLD',
       `renderer     ${this.game.renderer.type === Phaser.WEBGL ? 'WEBGL' : 'CANVAS'} (${this.game.renderer.type})`,
-      `design       ${s.width} x ${s.height}   window ${window.innerWidth} x ${window.innerHeight}`,
-      `scale mode   FIT + CENTER_BOTH`,
+      `game size    ${s.width} x ${s.height}   window ${window.innerWidth} x ${window.innerHeight}`,
+      `scale mode   RESIZE + CENTER_BOTH (adaptive portrait/landscape)`,
       `fps          ${Math.round(this.game.loop.actualFps)}`,
       `touch        ${touch ? 'yes' : 'no'}   mobile ${mobile ? 'yes' : 'no'}`,
       `gamepad      ${this.gamepadLabel}`,
+      `joy vec      ${this.touch.moveX.toFixed(2)}, ${this.touch.moveY.toFixed(2)}`,
       `pos          ${Math.round(this.player.x)}, ${Math.round(this.player.y)}`,
       '',
-      'WASD / arrows move | R restart | click to pulse',
+      'WASD / arrows move | R restart | left half: joystick | right half: attack',
     ].join('\n');
+  }
+
+  shutdown() {
+    // Release pointer/scale listeners so scene restarts don't stack handlers.
+    if (this.touch) this.touch.destroy();
   }
 }
 

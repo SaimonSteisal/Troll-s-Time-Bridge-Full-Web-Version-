@@ -38,22 +38,53 @@ export default class BootScene extends Phaser.Scene {
   buildPlaceholderTextures() {
     const g = new Phaser.GameObjects.Graphics(this);
 
-    // player body
-    g.clear().fillStyle(COLORS.PLAYER).fillCircle(0, 0, 16);
-    g.generateTexture('ph-player', 32, 32);
+    // player body — bigger placeholder (96px) so it's clearly visible on phones.
+    // NOTE: generateTexture() captures from (0,0), so shapes must be drawn in the
+    // positive quadrant around the texture center (48, 48).
+    g.clear().fillStyle(COLORS.PLAYER).fillCircle(48, 48, 44);
+    g.lineStyle(4, 0xffffff, 0.85).strokeCircle(48, 48, 44);
+    g.fillStyle(0xffffff, 1).fillCircle(48, 48, 10); // center dot marks the hitbox
+    g.generateTexture('ph-player', 96, 96);
 
     // enemy body
     g.clear().fillStyle(COLORS.ENEMY).fillCircle(0, 0, 16);
     g.generateTexture('ph-enemy', 32, 32);
 
+    // ── Virtual touch controls (drawn in the positive quadrant so
+    //    generateTexture() captures them fully) ────────────────────────
+    // joystick base: translucent ring, 256px reference size (scaled at runtime)
+    g.clear();
+    g.fillStyle(0xffffff, 0.10).fillCircle(128, 128, 120);
+    g.lineStyle(6, COLORS.PLAYER, 0.85).strokeCircle(128, 128, 120);
+    g.lineStyle(2, 0xffffff, 0.25).strokeCircle(128, 128, 70);
+    g.generateTexture('ph-joy-base', 256, 256);
+
+    // joystick thumb: solid knob, 128px reference size
+    g.clear();
+    g.fillStyle(COLORS.PLAYER, 0.95).fillCircle(64, 64, 48);
+    g.lineStyle(5, 0xffffff, 0.9).strokeCircle(64, 64, 48);
+    g.generateTexture('ph-joy-thumb', 128, 128);
+
+    // attack button: big red/orange disc with a slash mark, 256px reference size
+    g.clear();
+    g.fillStyle(0x000000, 0.35).fillCircle(132, 136, 120); // drop shadow
+    g.fillStyle(COLORS.ENEMY, 0.92).fillCircle(128, 128, 118);
+    g.lineStyle(8, 0xffffff, 0.9).strokeCircle(128, 128, 118);
+    g.lineStyle(16, 0xffffff, 0.95);
+    g.beginPath();
+    g.moveTo(80, 176);
+    g.lineTo(176, 80);
+    g.strokePath();
+    g.generateTexture('ph-btn-attack', 256, 256);
+
     // loot gem
     g.clear().fillStyle(COLORS.LOOT).fillTriangle(-10, 8, 10, 8, 0, -12);
     g.generateTexture('ph-loot', 24, 24);
 
-    // soft radial glow (used for lights / hit flashes)
+    // soft radial glow (used for lights / hit flashes) — centered in its 128px frame
     g.clear();
     for (let r = 64; r > 0; r -= 4) {
-      g.fillStyle(0xffffff, 0.03).fillCircle(0, 0, r);
+      g.fillStyle(0xffffff, 0.03).fillCircle(64, 64, r);
     }
     g.generateTexture('ph-glow', 128, 128);
 
