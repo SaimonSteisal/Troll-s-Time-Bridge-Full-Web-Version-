@@ -12,18 +12,25 @@ export const WORLD = {
 
 export const GAME_CONFIG = {
   type: Phaser.AUTO, // WebGL with automatic Canvas fallback (older mobile WebViews)
+  // Mobile-first sizing: match the actual window (portrait or landscape) so the
+  // canvas never renders "tiny" inside a mismatched viewport. These act as the
+  // initial size only; Scale.RESIZE below keeps them in sync on rotate/resize.
+  width: typeof window !== 'undefined' ? window.innerWidth : DESIGN_WIDTH,
+  height: typeof window !== 'undefined' ? window.innerHeight : DESIGN_HEIGHT,
   parent: 'game-root',
   backgroundColor: '#0d0b12',
 
   scale: {
-    // FIT + CENTER_BOTH = the canonical cross-platform setup:
-    // the game keeps its aspect ratio and letterboxes instead of stretching.
-    mode: Phaser.Scale.FIT,
+    // RESIZE + CENTER_BOTH = adaptive sizing for both portrait and landscape:
+    // the game surface always fills the browser window exactly, so virtual
+    // touch controls (joystick / attack button) can be anchored to real screen
+    // edges instead of letterboxed dead zones. FIT was shrinking everything down
+    // when a portrait window didn't match the 1280x720 landscape design ratio.
+    mode: Phaser.Scale.RESIZE,
     autoCenter: Phaser.Scale.CENTER_BOTH,
-    width: DESIGN_WIDTH,
-    height: DESIGN_HEIGHT,
-    // Let the canvas grow past design size on big desktop monitors without blurring.
-    zoom: 1,
+    parent: 'game-root',
+    width: '100%',
+    height: '100%',
   },
 
   input: {

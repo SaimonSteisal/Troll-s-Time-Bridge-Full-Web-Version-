@@ -41,6 +41,17 @@ export const COMBAT = {
   HURT_INVULN_MS: 400,
 };
 
+/**
+ * Virtual touch controls (mobile). Sizes are in *screen* pixels and scale with
+ * the viewport, so the joystick stays comfortably thumb-sized in portrait mode.
+ */
+export const TOUCH_CONTROLS = Object.freeze({
+  BASE_SIZE: 140,          // reference joystick diameter (at 720p)
+  MIN_RADIUS: 60,          // never smaller than this (px)
+  MAX_RADIUS: 110,         // never larger than this (px)
+  EDGE_MARGIN_FRACTION: 0.12, // distance from screen edge, as fraction of min(w,h)
+});
+
 // Placeholder palette (STEP 3 replaces these with real sprites).
 export const COLORS = {
   FLOOR: 0x2b2735,
