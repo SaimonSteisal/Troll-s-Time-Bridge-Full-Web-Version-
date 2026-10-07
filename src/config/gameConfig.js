@@ -1,13 +1,14 @@
 // src/config/gameConfig.js
 // Central Phaser configuration. Everything tunable lives here so scenes stay dumb.
 
-import { WORLD as WORLD_CONST } from './constants.js';
-
 export const DESIGN_WIDTH = 1280;
 export const DESIGN_HEIGHT = 720;
 
-/** Prototype world bounds. Single source of truth: constants.js (STEP 5 -> real map). */
-export const WORLD = WORLD_CONST;
+/** World bounds for the prototype arena (STEP 5 will grow this into a real map). */
+export const WORLD = {
+  width: 2560,
+  height: 1440,
+};
 
 export const GAME_CONFIG = {
   type: Phaser.AUTO, // WebGL with automatic Canvas fallback (older mobile WebViews)
@@ -52,11 +53,7 @@ export const GAME_CONFIG = {
   render: {
     pixelArt: true,   // crisp nearest-neighbour sampling for the pixel-art pipeline
     antialias: false,
-    // NOTE: roundPixels is intentionally OFF. Phaser's built-in camera smoothing
-    // (startFollow lerp) snaps to whole pixels when it is on, which makes the
-    // laggy follow visibly stutter at low lerp factors. The grid test world has
-    // thin lines that could shimmer a little - acceptable until real sprites land.
-    roundPixels: false,
+    roundPixels: true, // kills sprite shimmer/tile seams at non-integer camera positions
   },
 
   fps: {
