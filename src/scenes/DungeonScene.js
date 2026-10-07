@@ -13,9 +13,17 @@
 // FIX (APPROACH A — rectangle sprites, per the task brief):
 //   For every cell of the generated grid we create a static Phaser
 //   `rectangle` GameObject sized to TILE (32px). WALL cells get a physics
-//   static body and are added to `this.wallGroup`; FLOOR/CORRIDOR cells are
-//   plain decorative rectangles kept in `this.floorGroup` so we can destroy
-//   them cheaply on regeneration.
+//   STATIC body via `this.physics.add.staticGroup()`; FLOOR/CORRIDOR cells
+//   are plain decorative rectangles kept in `this.floorGroup` so we can
+//   destroy them cheaply on regeneration.
+//
+// BUGFIX #2 — "TypeError: body[key] is not a function" when adding rects with
+// manually-created StaticBodies to a regular `physics.add.group()`: a normal
+// Group's add() forcibly assigns a DYNAMIC Arcade Body to every child
+// (PhysicsGroup.createEnabledBody / runChildUpdate), which conflicts with the
+// StaticBody and crashes. The correct container for immovable walls is
+// `this.physics.add.staticGroup()` — it creates StaticBodies itself and its
+// `.add(go)` / `.create()` calls convert/attach static bodies properly.
 //
 //   Why rectangles instead of a real TilemapLayer?
 //     - Zero binary assets required (the project generates all textures).
@@ -30,9 +38,9 @@
 //
 // All API calls used here are verified against Phaser 3.90.0:
 //   this.add.rectangle(x, y, width, height, fillColor)        // GameObjectFactory
-//   this.physics.add.existing(go, isBodyStatic = true)        // Arcade Physics
+//   this.physics.add.staticGroup()                            // group factory
+//   staticGroup.add(go) -> converts go to a StaticBody        // Arcade Physics
 //   this.physics.add.collider(sprite, staticGroup)            // collision
-//   this.physics.add.group({ allowGravity: false })           // group factory
 //   Phaser.Input.Keyboard.JustDown(key)                       // edge detection
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -56,9 +64,11 @@ export default class DungeonScene extends Phaser.Scene {
     this.generator = new DungeonGenerator();
 
     // ── Physics groups ───────────────────────────────────────────────────
-    // wallGroup: every WALL rectangle gets a STATIC arcade body added to it
-    // (see renderGrid). Top-down game => no gravity anywhere.
-    this.wallGroup = this.physics.add.group({ allowGravity: false, immovable: true });
+    // wallGroup: STATIC group — `.add(rect)` converts each rectangle to a
+    // StaticBody automatically. A regular physics.add.group() would force a
+    // dynamic Body onto every child and crash (see header BUGFIX #2).
+    // Top-down game => no gravity anywhere.
+    this.wallGroup = this.physics.add.staticGroup();
     // floorGroup: purely decorative, no bodies — tracked so "G" can destroy them.
     this.floorGroup = this.add.group();
 
@@ -160,8 +170,8 @@ export default class DungeonScene extends Phaser.Scene {
           .setDepth(tileType === TILE.WALL ? 1 : -10); // floors behind, walls above
 
         if (tileType === TILE.WALL) {
-          // Static arcade body around the rectangle => collidable wall.
-          this.physics.add.existing(rect, true); // second arg: isBodyStatic
+          // StaticGroup.add() creates/converts a StaticBody for the rectangle
+          // automatically — no manual physics.add.existing() needed.
           this.wallGroup.add(rect);
         } else {
           this.floorGroup.add(rect);
