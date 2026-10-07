@@ -31,7 +31,7 @@ export default class BootScene extends Phaser.Scene {
     // tiny fade-in so the handover to the next scene reads as intentional
     this.tweens.add({ targets: [label], alpha: { from: 0, to: 1 }, duration: 300 });
 
-    this.time.delayedCall(600, () => this.scene.start('ScaffoldTest'));
+    this.time.delayedCall(600, () => this.scene.start('Dungeon')); // Variant C: procedural dungeon playground
   }
 
   /** Coloured geometric placeholders. TODO: Replace with sprite sheets. */
