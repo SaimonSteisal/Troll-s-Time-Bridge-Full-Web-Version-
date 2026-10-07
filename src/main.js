@@ -11,15 +11,14 @@ globalThis.Phaser = Phaser;
 
 import { GAME_CONFIG } from './config/gameConfig.js';
 import BootScene from './scenes/BootScene.js';
-import ScaffoldTestScene from './scenes/ScaffoldTestScene.js'; // kept for regression testing (scene.getScene('ScaffoldTest'))
-import DungeonScene from './scenes/DungeonScene.js';
+import ScaffoldTestScene from './scenes/ScaffoldTestScene.js';
 
 const game = new Phaser.Game({
   ...GAME_CONFIG,
-  scene: [BootScene, DungeonScene, ScaffoldTestScene],
+  scene: [BootScene, ScaffoldTestScene],
 });
 
-// Handy for debugging in the console: window.ashenfall.scene.getScene('Dungeon')
+// Handy for debugging in the console: window.ashenfall.scene.getScene('ScaffoldTest')
 window.ashenfall = game;
 
 export default game;
