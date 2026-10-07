@@ -11,17 +11,38 @@ export const ACTIONS = Object.freeze({
   PAUSE: 'PAUSE',         // digital + "justPressed" edge
 });
 
-/** Prototype arena bounds. STEP 5 grows this into a real Tiled/room-based map. */
+/** Test world for the movement/camera step: big enough that camera follow is obvious. */
 export const WORLD = {
-  width: 2560,
-  height: 1440,
+  width: 2000,
+  height: 2000,
+  TILE: 100,              // grid cell size drawn by BootScene (major lines every 5 tiles)
 };
 
 export const PLAYER = {
-  SPEED: 260,             // px/s at full stick / key press
-  ACCELERATION: 8,        // exponential-approach smoothing factor (higher = snappier)
-  RADIUS: 14,             // placeholder body radius
+  SPEED: 200,             // px/s at full stick / key press
+  MOVE_LERP: 0.12,        // per-frame lerp factor toward target velocity (0.1-0.15)
+  STOP_EPSILON: 4,        // px/s below which we snap velocity to exactly 0
+  RADIUS: 44,             // hitbox radius inside the 96px placeholder texture
+  TEXTURE: 96,            // ph-player texture size (centered art)
+  SCALE: 1.5,             // display scale (keeps the body clearly visible on phones)
   START_HP: 100,
+  // Movement-state feedback (placeholder graphics until STEP 3 sprites land)
+  IDLE_TINT: 0x66bb6a,    // green while standing still
+  MOVING_TINT: 0xb9f6ca,  // brighter green while moving
+  TILT_DEG: 14,           // max lean angle toward the movement direction
+  BOB_SPEED: 12,          // bobbing cycles/sec at full speed
+  BOB_AMP_PX: 5,          // vertical squash amplitude (scale pulse)
+  ATTACK_LERP: 0.35,      // rotation/tint smoothing factor
+};
+
+export const CAMERA = {
+  LERP: 0.09,             // follow smoothing (0.08-0.1 = pleasant lag)
+  ROUND: false,           // sub-pixel follow looks smoother with vector placeholders
+};
+
+export const ATTACK_FX = {
+  DURATION_MS: 260,       // expanding-ring lifetime
+  RADIUS_FACTOR: 2.4,     // ring reaches player display-radius x this
 };
 
 export const ENEMY = {
@@ -37,7 +58,7 @@ export const COMBAT = {
   ATTACK_DAMAGE: 12,
   ATTACK_RANGE: 52,
   ATTACK_ARC_DEG: 110,
-  ATTACK_COOLDOWN_MS: 380,
+  ATTACK_COOLDOWN_MS: 500, // attack button cooldown (also drives the visual sweep)
   HURT_INVULN_MS: 400,
 };
 
@@ -56,8 +77,11 @@ export const TOUCH_CONTROLS = Object.freeze({
 export const COLORS = {
   FLOOR: 0x2b2735,
   FLOOR_GRID: 0x37323f,
+  GRID_MINOR: 0x3c3648,   // fine grid lines on the test world
+  GRID_MAJOR: 0x5a5170,   // every 5th line + world border (movement is easier to read)
   PLAYER: 0x4fc3f7,
   PLAYER_DIR: 0xffffff,
+  ATTACK_FX: 0xffe082,    // expanding attack ring / flash
   ENEMY: 0xef5350,
   ENEMY_AGGRO: 0xffb300,
   LOOT: 0xffd54f,
