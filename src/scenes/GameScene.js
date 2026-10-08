@@ -1,5 +1,8 @@
-// src/scenes/DungeonScene.js
-// STEP 5: procedural dungeon rendering + collision.
+// src/scenes/GameScene.js
+// (moved from DungeonScene.js — the working gameplay scene: procedural dungeon
+//  rendering + collision + WASD movement + camera follow. All of that logic is
+//  UNCHANGED; only minimal engine-frame wiring was added: registry read/write,
+//  global InputManager touch layer, ESC -> PauseScene.)
 //
 // ─────────────────────────────────────────────────────────────────────────────
 // BUGFIX — "Uncaught TypeError: this.add.canvas is not a function" (old line 89)
@@ -54,14 +57,57 @@ const TILE_COLORS = Object.freeze({
   [TILE.CORRIDOR]: 0x4a4a4a,
 });
 
-export default class DungeonScene extends Phaser.Scene {
+export default class GameScene extends Phaser.Scene {
   constructor() {
-    super('Dungeon');
+    super('GameScene');
+  }
+
+  init(data) {
+    // ── ENGINE FRAME WIRING (read registry BEFORE create) ──────────────
+    // Single source of truth — never globals, never other scene classes.
+    const reg = this.game.registry;
+    this.playerState = reg.get('playerState') || { hp: 100, maxHp: 100, gold: 0, pos: null };
+    this.gameState = reg.get('gameState') || {};
+    this.settings = reg.get('settings') || {};
+    /** Global InputManager created ONCE in BootScene — read only, never re-made. */
+    this.input.manager = reg.get('input');
+    /** Optional spawn override from a future room/level system. */
+    this.spawnOverride = data && data.spawn ? data.spawn : null;
   }
 
   create() {
     // Pure-logic generator; the scene only renders its plain-data output.
     this.generator = new DungeonGenerator();
+
+    // ── ENGINE FRAME WIRING ────────────────────────────────────────────
+    // Attach the virtual joystick + attack button through the GLOBAL
+    // InputManager (which wraps the untouched TouchControls class).
+    if (this.input.manager) this.input.manager.attachTouch(this);
+
+    // ESC edge -> pause overlay (also handled via gamepad Start in update()).
+    this.keyEsc = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
+    this.keyEsc.on('down', () => this.togglePause());
+
+    // On-screen pause button (mobile-friendly), bottom-centre, above touch layer.
+    const pw = 120;
+    const ph = 44;
+    const pbx = this.scale.width / 2;
+    const pby = this.scale.height - 60;
+    this.pauseBtn = this.add
+      .rectangle(pbx, pby, pw, ph, 0x1b1826, 0.8)
+      .setStrokeStyle(2, 0x4fc3f7, 0.9)
+      .setScrollFactor(0)
+      .setDepth(950)
+      .setInteractive();
+    this.add
+      .text(pbx, pby, 'PAUSE', { fontFamily: 'monospace', fontSize: '18px', color: '#e8e6f0' })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(951);
+    this.pauseBtn.on('pointerdown', () => this.togglePause());
+
+    // PauseScene's "MAIN MENU" stops us directly: persist before shutdown.
+    this.events.once('shutdown', () => this.persistPlayerState());
 
     // ── Physics groups ───────────────────────────────────────────────────
     // wallGroup: STATIC group — `.add(rect)` converts each rectangle to a
@@ -122,6 +168,21 @@ export default class DungeonScene extends Phaser.Scene {
       .setDrag(1200);
     this.player.body.setCircle(44, 8, 8); // matches the 96px centered texture
     this.player.setVelocity(0, 0);
+
+    // ── ENGINE FRAME WIRING: registry-driven spawn + HP ────────────────
+    // A spawn override (e.g. from a future room-transition system) wins over
+    // the entrance-room default; playerState.pos is applied only if it lands
+    // on walkable ground of THIS dungeon (guards stale cross-run positions).
+    if (this.spawnOverride) {
+      this.player.setPosition(this.spawnOverride.x, this.spawnOverride.y);
+    } else if (this.playerState && this.playerState.pos) {
+      const p = this.playerState.pos;
+      if (this.generator.isWalkableWorld(p.x, p.y)) this.player.setPosition(p.x, p.y);
+    }
+    if (this.playerState) {
+      this.playerState.hp = this.playerState.hp ?? this.playerState.maxHp ?? 100;
+      this.game.registry.set('playerState', this.playerState);
+    }
 
     // ── Collision: player vs walls ───────────────────────────────────────
     this.physics.add.collider(this.player, this.wallGroup);
@@ -219,6 +280,11 @@ export default class DungeonScene extends Phaser.Scene {
     void time;
     void delta;
 
+    // ── ENGINE FRAME WIRING: pause gate + global-input edges ───────────
+    const input = this.input.manager;
+    if (input && input.justPressed('pause')) this.togglePause();
+    if (this.gameState && this.gameState.paused) return;
+
     // "G" regenerates the whole dungeon: clear rects/bodies -> new grid ->
     // new rects -> respawn player in the (new) entrance room.
     if (Phaser.Input.Keyboard.JustDown(this.keys.G)) {
@@ -235,6 +301,17 @@ export default class DungeonScene extends Phaser.Scene {
     if (k.W.isDown || k.UP.isDown) vy -= 1;
     if (k.S.isDown || k.DOWN.isDown) vy += 1;
 
+    // Virtual joystick via the GLOBAL InputManager (wraps TouchControls).
+    // Touch takes priority when a finger is on the stick — same behaviour as
+    // the old scaffold scene, now routed through registry.get('input').
+    if (input) {
+      input.touch && input.touch.update();
+      if (input.touch && input.touch.joyPointerId !== null) {
+        vx = input.moveX;
+        vy = input.moveY;
+      }
+    }
+
     if (vx || vy) {
       const len = Math.hypot(vx, vy);
       this.player.setVelocity((vx / len) * PLAYER.SPEED, (vy / len) * PLAYER.SPEED);
@@ -242,7 +319,85 @@ export default class DungeonScene extends Phaser.Scene {
       this.player.setVelocity(0, 0);
     }
 
+    // Attack edge from the touch button (or keyboard E through 'confirm').
+    if ((input && input.attackJustPressed()) || (input && input.justPressed('confirm'))) {
+      this.onAttack();
+    }
+
+    // Persist live position to the registry every frame (cheap object reuse).
+    if (this.playerState) {
+      this.playerState.pos = { x: this.player.x, y: this.player.y };
+    }
+
     this.updateHud();
+  }
+
+  // ── ENGINE FRAME API ─────────────────────────────────────────────────────
+
+  /**
+   * Launch the PauseScene overlay ON TOP of this scene (does not stop us).
+   * GameScene's update() freezes via the registry `gameState.paused` flag;
+   * PauseScene additionally calls scene.pause('GameScene') for a hard freeze.
+   */
+  pause() {
+    if (this.scene.isActive('PauseScene')) return; // already paused
+    const gs = this.game.registry.get('gameState');
+    gs.paused = true;
+    this.game.registry.set('gameState', gs);
+    this.scene.launch('PauseScene');
+  }
+
+  /** Toggle the pause overlay (ESC / gamepad Start / on-screen button). */
+  togglePause() {
+    if (this.scene.isActive('PauseScene')) {
+      // Let PauseScene own the resume path (it flips the registry flag and
+      // resumes this scene) — never duplicate that logic here.
+      const ps = this.scene.getScene('PauseScene');
+      if (ps && typeof ps.resume === 'function') ps.resume();
+    } else {
+      this.pause();
+    }
+  }
+
+  /** ATTACK feedback hook (pulse tween). Real combat arrives later (STEP 6). */
+  onAttack() {
+    if (!this.player) return;
+    this.tweens.add({
+      targets: this.player,
+      scale: { from: 0.65, to: 0.5 },
+      duration: 140,
+      ease: 'Back.Out',
+    });
+  }
+
+  /** Write meaningful gameplay state back to the registry (single source of truth). */
+  persistPlayerState() {
+    if (this.player && this.playerState) {
+      this.playerState.pos = { x: this.player.x, y: this.player.y };
+      this.game.registry.set('playerState', this.playerState);
+    }
+  }
+
+  /** Called by future combat/room systems — death goes through the registry + bus. */
+  notifyDeath() {
+    const gs = this.game.registry.get('gameState');
+    gs.deaths = (gs.deaths || 0) + 1;
+    this.game.registry.set('gameState', gs);
+    if (this.playerState) {
+      this.playerState.hp = 0;
+      this.persistPlayerState();
+    }
+    const bus = this.game.registry.get('bus');
+    if (bus) bus.emit('player:died', this.playerState);
+  }
+
+  /** Called by future room-clear logic. */
+  notifyDungeonCleared() {
+    const gs = this.game.registry.get('gameState');
+    gs.dungeonCleared = true;
+    this.game.registry.set('gameState', gs);
+    const bus = this.game.registry.get('bus');
+    if (bus) bus.emit('dungeon:cleared', gs);
   }
 
   updateHud() {
@@ -254,8 +409,17 @@ export default class DungeonScene extends Phaser.Scene {
         `Ashenfall — Procedural Dungeon (Phaser 3.90)`,
         `Tiles: ${d.cols}x${d.rows} @ ${d.tile}px  World: ${d.worldWidth}x${d.worldHeight}px`,
         `Rooms: ${rooms}  Walls: ${this.wallGroup.countActive(true)}  Spawn: entrance room center`,
-        `WASD/Arrows move — G regenerate dungeon`,
+        `HP: ${this.playerState ? this.playerState.hp : '-'}  Seed: ${this.gameState ? this.gameState.currentDungeonSeed : '-'}`,
+        `WASD/Arrows + joystick move — E/ATTACK pulse — G regenerate dungeon — ESC pause`,
       ].join('\n')
     );
+  }
+
+  shutdown() {
+    // ENGINE FRAME: persist before teardown, and detach the global touch layer
+    // so it never keeps dead GameObjects from a destroyed scene alive.
+    this.persistPlayerState();
+    const input = this.game.registry.get('input');
+    if (input) input.attachTouch(null);
   }
 }

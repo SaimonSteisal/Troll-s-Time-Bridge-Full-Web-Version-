@@ -11,15 +11,19 @@ globalThis.Phaser = Phaser;
 
 import { GAME_CONFIG } from './config/gameConfig.js';
 import BootScene from './scenes/BootScene.js';
-import ScaffoldTestScene from './scenes/ScaffoldTestScene.js';
-import DungeonScene from './scenes/DungeonScene.js';
+import MainMenuScene from './scenes/MainMenuScene.js';
+import GameScene from './scenes/GameScene.js';
+import PauseScene from './scenes/PauseScene.js';
 
+// ENGINE FRAME scene order (skeleton): Boot -> Menu -> Game, with Pause as a
+// sleeping overlay launched on demand. The FIRST scene in the array is the
+// starting scene Phaser boots into.
 const game = new Phaser.Game({
   ...GAME_CONFIG,
-  scene: [BootScene, ScaffoldTestScene, DungeonScene],
+  scene: [BootScene, MainMenuScene, GameScene, PauseScene],
 });
 
-// Handy for debugging in the console: window.ashenfall.scene.getScene('ScaffoldTest')
+// Handy for debugging in the console: window.ashenfall.scene.getScene('GameScene')
 window.ashenfall = game;
 
 export default game;

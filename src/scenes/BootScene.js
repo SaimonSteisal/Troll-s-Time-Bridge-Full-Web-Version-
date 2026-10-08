@@ -1,37 +1,70 @@
 // src/scenes/BootScene.js
-// STEP 1 placeholder: generates every texture we need procedurally so the scaffold
-// runs with zero binary assets. STEP 3 replaces these with real AI-generated sprites.
+// ENGINE FRAME — Boot is the STARTING scene. Responsibilities (and nothing else):
+//   1. Generate all placeholder textures (unchanged from STEP 1 — GameScene and
+//      TouchControls depend on them).
+//   2. Seed game.registry with the single source of truth:
+//        playerState / gameState / settings / input
+//   3. Create the GLOBAL InputManager exactly ONCE and store it at
+//        game.registry.set('input', manager)
+//   4. Transition to MainMenuScene.
+// No gameplay code lives here.
 
-import { COLORS, WORLD } from '../config/constants.js';
+import { COLORS } from '../config/constants.js';
+import InputManager from '../systems/InputManager.js';
 
 export default class BootScene extends Phaser.Scene {
   constructor() {
-    super('Boot');
+    super('BootScene');
   }
 
   create() {
     this.buildPlaceholderTextures();
+    this.initRegistry();
 
+    // Minimal boot flash so the handover reads as intentional; then straight
+    // to the main menu (the first RENDERED gameplay-free screen is MainMenu).
     const label = this.add
-      .text(this.scale.width / 2, this.scale.height / 2 - 40, 'Ashenfall', {
+      .text(this.scale.width / 2, this.scale.height / 2, 'Ashenfall — booting...', {
         fontFamily: 'monospace',
-        fontSize: '48px',
-        color: '#e8e6f0',
-      })
-      .setOrigin(0.5);
-
-    this.add
-      .text(this.scale.width / 2, this.scale.height / 2 + 20, 'Scaffold OK - booting test scene...', {
-        fontFamily: 'monospace',
-        fontSize: '18px',
+        fontSize: '24px',
         color: '#8f8aa3',
       })
       .setOrigin(0.5);
+    this.tweens.add({ targets: label, alpha: { from: 0, to: 1 }, duration: 200 });
 
-    // tiny fade-in so the handover to the next scene reads as intentional
-    this.tweens.add({ targets: [label], alpha: { from: 0, to: 1 }, duration: 300 });
+    this.time.delayedCall(250, () => this.scene.start('MainMenuScene'));
+  }
 
-    this.time.delayedCall(600, () => this.scene.start('ScaffoldTest'));
+  /** Registry = single source of truth. Scenes read/write HERE, never globals. */
+  initRegistry() {
+    const reg = this.game.registry;
+
+    reg.set('playerState', {
+      hp: 100,
+      maxHp: 100,
+      gold: 0,
+      pos: null, // {x, y} written by GameScene on shutdown / meaningful events
+    });
+
+    reg.set('gameState', {
+      currentDungeonSeed: (Math.random() * 0xffffffff) >>> 0,
+      currentRoom: 'entrance',
+      dungeonCleared: false,
+      deaths: 0,
+    });
+
+    reg.set('settings', {
+      musicVolume: 0.7,
+      sfxVolume: 0.8,
+      invertY: false,
+    });
+
+    // Global InputManager — created ONCE, ever. All scenes read it via
+    // game.registry.get('input'). Never instantiate it a second time.
+    reg.set('input', new InputManager(this.game));
+
+    // Loose-coupling event bus (Phaser.Events), e.g. bus.emit('player:died').
+    reg.set('bus', new Phaser.Events.EventEmitter());
   }
 
   /** Coloured geometric placeholders. TODO: Replace with sprite sheets. */
@@ -54,7 +87,7 @@ export default class BootScene extends Phaser.Scene {
     //    generateTexture() captures them fully) ────────────────────────
     // joystick base: translucent ring, 256px reference size (scaled at runtime)
     g.clear();
-    g.fillStyle(0xffffff, 0.10).fillCircle(128, 128, 120);
+    g.fillStyle(0xffffff, 0.1).fillCircle(128, 128, 120);
     g.lineStyle(6, COLORS.PLAYER, 0.85).strokeCircle(128, 128, 120);
     g.lineStyle(2, 0xffffff, 0.25).strokeCircle(128, 128, 70);
     g.generateTexture('ph-joy-base', 256, 256);
@@ -101,8 +134,5 @@ export default class BootScene extends Phaser.Scene {
     fg.lineStyle(2, COLORS.FLOOR_GRID, 1).strokeRect(1, 1, size - 2, size - 2);
     fg.generateTexture('ph-tile-floor', size, size);
     fg.destroy();
-
-    // Pre-fill a static world so camera bounds have something to look at.
-    void WORLD;
   }
 }
