@@ -1,6 +1,11 @@
 // src/config/gameConfig.js
 // Central Phaser configuration. Everything tunable lives here so scenes stay dumb.
 
+import BootScene from '../scenes/BootScene.js';
+import MainMenuScene from '../scenes/MainMenuScene.js';
+import GameScene from '../scenes/GameScene.js';
+import PauseScene from '../scenes/PauseScene.js';
+
 export const DESIGN_WIDTH = 1280;
 export const DESIGN_HEIGHT = 720;
 
@@ -9,6 +14,13 @@ export const WORLD = {
   width: 2560,
   height: 1440,
 };
+
+/**
+ * ENGINE FRAME scene skeleton — order matters: the FIRST entry is the scene
+ * Phaser boots into (BootScene), which hands over to MainMenuScene.
+ * PauseScene sleeps until GameScene launches it as an overlay.
+ */
+export const SCENES = [BootScene, MainMenuScene, GameScene, PauseScene];
 
 export const GAME_CONFIG = {
   type: Phaser.AUTO, // WebGL with automatic Canvas fallback (older mobile WebViews)
